@@ -8,6 +8,10 @@ import requests
 import typer
 from bs4 import BeautifulSoup
 
+import re
+import spacy
+nlp = spacy.load('en_core_web_sm') # SpaCy English Language Model
+
 opener = urllib.request.build_opener()
 opener.addheaders = [("User-agent", "Mozilla/5.0")]
 urllib.request.install_opener(opener)
@@ -30,13 +34,17 @@ INDUSTRY_SECTOR_MAPPING = {
 
 app = typer.Typer()
 
-
 def process_entry(entry):
     anchor = entry.find("a")
     decision_url_part = anchor["href"]
     title = anchor.find("h4").text.strip()
     metadata = anchor.find("div", class_="search-result__info-main").text
     tag = anchor.find("span", class_="search-result__tag").text
+    description = anchor.find("div", class_="search-result__desc").text
+    product = None
+
+    match = re.search(r"(\w+)\s+insurance", description)
+    if match: product = match.group(1) 
 
     metadata = [m.strip() for m in metadata.strip().split("\n") if m.strip()]
     [date, company, decision, *extras] = metadata
@@ -50,11 +58,11 @@ def process_entry(entry):
         "title": title,
         "date": date,
         "company": company,
+        "product": product,
         "decision": decision,
         "extras": extras,
         "tag": tag.strip(),
     }
-
 
 @app.command()
 def get_metadata(
