@@ -51,6 +51,7 @@ for filename in os.listdir(directory):
     pdf_file = os.path.join(directory, filename)
     pdf_text = extract_pdf_text(pdf_file)
     row = extract_text_between_headings(pdf_text, headings)
+    row.insert(0, filename)
 
     if "partially uphold" in row[len(row) - 1]: 
         row.append("Yes")
@@ -59,5 +60,5 @@ for filename in os.listdir(directory):
 
     data.append(row)
 
-df = pd.DataFrame(data, columns=['The complaint', 'What happened', 'Provisional decision', 'What Ive decided – and why', 'My final decision', 'Partially Upheld'])
+df = pd.DataFrame(data, columns=['File', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided – and why', 'My final decision', 'Partially Upheld'])
 print(df)
