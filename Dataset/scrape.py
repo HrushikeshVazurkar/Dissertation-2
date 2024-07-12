@@ -98,7 +98,7 @@ def get_metadata(
     parameters["DateFrom"] = from_.strftime("%Y-%m-%d")
     parameters["DateTo"] = to.strftime("%Y-%m-%d")
     if keyword:
-        parameters["Keywords"] = keyword
+        parameters["Keyword"] = keyword
 
     metadata_entries = []
     for start in range(0, 1_000_000, 10):
