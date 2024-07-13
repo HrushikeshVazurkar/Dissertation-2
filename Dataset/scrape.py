@@ -198,6 +198,7 @@ def download_decisions(
         print("Final memory usage: ", total_memory, " MB")
 
         final_df = pd.merge(metadata_df, total_df, on='decision_id', how='left')
+        final_df.loc[final_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
         final_df.to_csv('output.csv', index=False)
 
 if __name__ == "__main__":
