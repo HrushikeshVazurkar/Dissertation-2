@@ -10,7 +10,7 @@ def extract_pdf_text(pdf_file):
         for page_num in range(len(reader.pages)):
             page = reader.pages[page_num]
             text += page.extract_text()
-    return re.sub('”', '"', re.sub('“', '"', re.sub('–', '-', re.sub('’', '', re.sub(r'\uf0b7', '', text)))))
+    return re.sub('‘', '', re.sub('”', '"', re.sub('“', '"', re.sub('–', '-', re.sub('’', '', re.sub(r'\uf0b7', '', text))))))
 
 def extract_text_between_headings(text, headings):
     lines = text.splitlines()

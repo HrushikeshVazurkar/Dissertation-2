@@ -13,6 +13,7 @@ import os
 import pandas as pd
 
 from extract import create_pdf_df
+from sklearn.model_selection import train_test_split
 import spacy
 nlp = spacy.load('en_core_web_sm') # SpaCy English Language Model
 
@@ -147,15 +148,19 @@ def get_metadata(
 
 def process_batch(batch, output_dir):
     for row in batch:
-        output_file = output_dir / f"{row['decision_id']}.pdf"
-        if output_file.exists():
-            typer.echo(f"Skipping {output_file} as it already exists")
-            continue
+        try:
+            output_file = output_dir / f"{row['decision_id']}.pdf"
+            if output_file.exists():
+                typer.echo(f"Skipping {output_file} as it already exists")
+                continue
 
-        time.sleep(1)
-        decision_url = BASE_DECISIONS_URL + row["location"]
-        urllib.request.urlretrieve(decision_url, output_file)
-
+            time.sleep(1)
+            decision_url = BASE_DECISIONS_URL + row["location"]
+            urllib.request.urlretrieve(decision_url, output_file)
+        except:
+            print('sleeping for 5 sec.')
+            time.sleep(5)
+            
 final_df = None
 
 @app.command()
@@ -199,7 +204,16 @@ def download_decisions(
 
         final_df = pd.merge(metadata_df, total_df, on='decision_id', how='left')
         final_df.loc[final_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
-        final_df.to_csv('output.csv', index=False)
+
+        train_size = 0.7; val_size = 0.15; test_size = 0.15  # 15% for testing
+        assert train_size + val_size + test_size == 1
+
+        train_df, temp_df = train_test_split(final_df, train_size=train_size, random_state=42)
+        val_df, test_df = train_test_split(temp_df, test_size=test_size / (val_size + test_size), random_state=42)
+
+        train_df.to_csv('train.csv', index=False)
+        val_df.to_csv('validation.csv', index=False)
+        test_df.to_csv('test.csv', index=False)
 
 if __name__ == "__main__":
     app()
