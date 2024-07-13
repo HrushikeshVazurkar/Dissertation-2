@@ -168,7 +168,7 @@ def download_decisions(
     metadata_file: Path = typer.Argument("metadata.csv", help="The path to the metadata file"),
     output_dir: Path = typer.Argument("decisions", help="The path to the output directory"),
 ):
-    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 5
+    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100
 
     metadata_df = pd.read_csv("metadata.csv", encoding='cp1252').drop(columns=['location', 'title', 'extras'])
     total_df = pd.DataFrame(columns=['decision_id', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided – and why', 'My final decision', 'Partially Upheld'])
