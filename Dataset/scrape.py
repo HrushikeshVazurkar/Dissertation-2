@@ -154,13 +154,14 @@ def process_batch(batch, output_dir):
                 typer.echo(f"Skipping {output_file} as it already exists")
                 continue
 
-            time.sleep(1)
+            # time.sleep(1)
             decision_url = BASE_DECISIONS_URL + row["location"]
             urllib.request.urlretrieve(decision_url, output_file)
         except:
             print('sleeping for 5 sec.')
             time.sleep(5)
-            
+            continue
+        
 final_df = None
 
 @app.command()
@@ -168,52 +169,64 @@ def download_decisions(
     metadata_file: Path = typer.Argument("metadata.csv", help="The path to the metadata file"),
     output_dir: Path = typer.Argument("decisions", help="The path to the output directory"),
 ):
-    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100
-
+    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100; total_memory = 0
     metadata_df = pd.read_csv("metadata.csv", encoding='cp1252').drop(columns=['location', 'title', 'extras'])
-    total_df = pd.DataFrame(columns=['decision_id', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided – and why', 'My final decision', 'Partially Upheld'])
-    
+
+    header = 0
+
     with open(metadata_file) as f:
-        reader = csv.DictReader(f)
-        count = 0
-        for row in reader:
-            batch.append(row)
-            count += 1
+        try:
+            reader = csv.DictReader(f)
+            count = 0; c = 1
+            for row in reader:
+                batch.append(row)
+                count += 1
 
-            if count == batch_size:
-                process_batch(batch, output_dir)
-                df = create_pdf_df()
-                total_df = pd.concat([total_df, df], ignore_index=True)
+                if count == batch_size:
+                    process_batch(batch, output_dir)
+                    df = create_pdf_df()
 
-                total_memory = total_df.memory_usage(deep=True)/(1024**2)
-                total_memory = total_memory.sum().round(2)
-                print("Current memory usage: ", total_memory, " MB")
-                batch = []; count = 0
-                for f in os.listdir(output_dir):
-                    os.remove(os.path.join(output_dir, f))
+                    full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
+                    full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
+                    
+                    if header == 0:
+                        full_df.to_csv('dataset.csv', mode='a+', index=False)
+                    else:
+                        full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
-        process_batch(batch, output_dir)
-        df = create_pdf_df()
-        total_df = pd.concat([total_df, df], ignore_index=True)
-        for f in os.listdir(output_dir):
-            os.remove(os.path.join(output_dir, f))
+                    if header == 0:
+                        header = 1
 
-        total_memory = total_df.memory_usage(deep=True)/(1024**2)
-        total_memory = total_memory.sum().round(2)
-        print("Final memory usage: ", total_memory, " MB")
+                    temp = df.memory_usage(deep=True)/(1024**2)
+                    total_memory += temp.sum().round(2)
+                    print("Current memory usage: ", total_memory, " MB - ", c*count, " files")
 
-        final_df = pd.merge(metadata_df, total_df, on='decision_id', how='left')
-        final_df.loc[final_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
+                    batch = []; count = 0; c+=1
+                    for f in os.listdir(output_dir):
+                        os.remove(os.path.join(output_dir, f))
 
-        train_size = 0.7; val_size = 0.15; test_size = 0.15  # 15% for testing
-        assert train_size + val_size + test_size == 1
+            process_batch(batch, output_dir)
+            df = create_pdf_df()
 
-        train_df, temp_df = train_test_split(final_df, train_size=train_size, random_state=42)
-        val_df, test_df = train_test_split(temp_df, test_size=test_size / (val_size + test_size), random_state=42)
+            full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
+            full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
 
-        train_df.to_csv('train.csv', index=False)
-        val_df.to_csv('validation.csv', index=False)
-        test_df.to_csv('test.csv', index=False)
+            if header == 0:
+                full_df.to_csv('dataset.csv', mode='a+', index=False)
+            else:
+                full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
+            if header == 0:
+                header = 1
+
+            temp = df.memory_usage(deep=True)/(1024**2)
+            total_memory += temp.sum().round(2)
+            print("Final memory usage: ", total_memory, " MB")
+
+            for f in os.listdir(output_dir):
+                os.remove(os.path.join(output_dir, f))
+        except:
+            print("Error!")
+        
 if __name__ == "__main__":
     app()
