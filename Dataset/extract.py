@@ -5,7 +5,6 @@ import pandas as pd
 
 def preprocess_text_from_pdf(text):
     text_normalized = text.encode('ascii', 'ignore').decode() # Unicode normalization (NFD form)
-    # text_normalized = ' '.join(text_normalized.split()) # Remove extra whitespaces
     text_normalized = re.sub(r'[^\x00-\x7F]+', ' ', text_normalized) # noise removal - non printable chars
     return text_normalized
 
@@ -18,7 +17,6 @@ def extract_pdf_text(pdf_file):
             text += page.extract_text()
     
     return preprocess_text_from_pdf(re.sub('–', '-', text))
-    # return re.sub('‘', '', re.sub('”', '"', re.sub('“', '"', re.sub('–', '-', re.sub('’', '', re.sub(r'\uf0b7', '', text))))))
 
 def extract_text_between_headings(text, headings):
     lines = text.splitlines()
@@ -33,7 +31,6 @@ def extract_text_between_headings(text, headings):
         if flag == 0:
             hdi.append(-1)
 
-    print(hdi)
     hdi[len(hdi) - 1] = len(lines)-2
 
     if hdi[2] != -1:
