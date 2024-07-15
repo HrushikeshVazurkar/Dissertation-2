@@ -172,8 +172,6 @@ def download_decisions(
     output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100; total_memory = 0
     metadata_df = pd.read_csv("metadata.csv", encoding='cp1252').drop(columns=['location', 'title', 'extras'])
 
-    header = 0
-
     with open(metadata_file) as f:
         try:
             reader = csv.DictReader(f)
@@ -188,14 +186,8 @@ def download_decisions(
 
                     full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
                     full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
-                    
-                    if header == 0:
-                        full_df.to_csv('dataset.csv', mode='a+', index=False)
-                    else:
-                        full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
-
-                    if header == 0:
-                        header = 1
+                        
+                    full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
                     temp = df.memory_usage(deep=True)/(1024**2)
                     total_memory += temp.sum().round(2)
@@ -211,13 +203,7 @@ def download_decisions(
             full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
             full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
 
-            if header == 0:
-                full_df.to_csv('dataset.csv', mode='a+', index=False)
-            else:
-                full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
-
-            if header == 0:
-                header = 1
+            full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
             temp = df.memory_usage(deep=True)/(1024**2)
             total_memory += temp.sum().round(2)
@@ -227,6 +213,6 @@ def download_decisions(
                 os.remove(os.path.join(output_dir, f))
         except:
             print("Error!")
-        
+                    
 if __name__ == "__main__":
     app()
