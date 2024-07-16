@@ -2,10 +2,14 @@ import PyPDF2
 import re
 import os
 import pandas as pd
+from pprint import pprint
+import unicodedata
 
 def preprocess_text_from_pdf(text):
     text_normalized = text.encode('ascii', 'ignore').decode() # Unicode normalization (NFD form)
-    text_normalized = re.sub(r'[^\x00-\x7F]+', ' ', text_normalized) # noise removal - non printable chars
+    text_normalized = re.sub(r'[^\x00-\x7F]+', '', text_normalized) # noise removal - non printable chars
+    text_normalized = re.sub(r'K820x#14', '', text_normalized) # noise removal - non printable chars
+
     return text_normalized
 
 def extract_pdf_text(pdf_file):
@@ -25,14 +29,20 @@ def extract_text_between_headings(text, headings):
     for heading in headings:
         flag = 0
         for i, line in enumerate(lines):
-            if heading in line:
-                hdi.append(i); flag = 1
-                break
+            if heading[0] != r'provisional':
+                if heading[0] == line.lower() or heading[1] == line.lower():
+                    hdi.append(i); flag = 1
+                    break
+            else:
+                if heading[0] in line.lower():
+                    hdi.append(i); flag = 1
+                    break
         if flag == 0:
             hdi.append(-1)
 
-    hdi[len(hdi) - 1] = len(lines)-2
+    hdi.append(len(lines)-2)
 
+    print(hdi)
     if hdi[2] != -1:
         complaint = ' '.join(lines[hdi[0] + 1: hdi[1]])
         what_happened = ' '.join(lines[hdi[1] + 1: hdi[2]])
@@ -45,17 +55,20 @@ def extract_text_between_headings(text, headings):
         provisional = None
         decided_and_why = ' '.join(lines[hdi[3] + 1: hdi[4]])
         final_decision = ' '.join(lines[hdi[4] + 1: hdi[5]])
-        
+    
     return [complaint, what_happened, provisional, decided_and_why, final_decision]
 
 def create_pdf_df():
     directory = 'decisions'
-    headings = [r'The complaint', r'What happened', r'provisional', r"What Ive decided - and why", r'My final decision', r'Ombudsman']
-
+    headings = [[r'the complaint', r'complaint'], [r'what happened', r'background and summary to complaint'],
+                [r'provisional'],
+                [r'what ive decided - and why', r'my findings'],
+                [r'my final decision', r'my decision']]
     data = []
     for filename in os.listdir(directory):
         pdf_file = os.path.join(directory, filename)
         pdf_text = extract_pdf_text(pdf_file)
+
         row = extract_text_between_headings(pdf_text, headings)
         row.insert(0, re.sub(r'.pdf', '', filename))
 

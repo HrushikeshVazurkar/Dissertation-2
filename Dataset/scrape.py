@@ -43,8 +43,8 @@ def extract_product_info(doc):
     for i, token in enumerate(doc):
         if token.text == 'insurance':
             for j in range(i - 1, -1, -1): # nearest pron/deter on the left
-                if doc[j].pos_ in ['PRON', 'DET'] or "’s" in doc[j].text:
-                    phrase = doc[j + 1:i] # words between the pron/deter and "insurance"
+                if doc[j].pos_ in ['PRON', 'DET', 'VERB'] or "’s" in doc[j].text:
+                    phrase = doc[j + 1:i] # words between the pron/deter/verb and "insurance"
                     return re.sub('’', '', phrase.text)
     return ""
 
@@ -169,8 +169,13 @@ def download_decisions(
     metadata_file: Path = typer.Argument("metadata.csv", help="The path to the metadata file"),
     output_dir: Path = typer.Argument("decisions", help="The path to the output directory"),
 ):
-    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100; total_memory = 0
-    metadata_df = pd.read_csv("metadata.csv", encoding='cp1252').drop(columns=['location', 'title', 'extras'])
+    output_dir.mkdir(exist_ok=True); batch = []; batch_size = 100
+    metadata_df = pd.read_csv("metadata.csv", encoding='cp1252').drop(columns=['location', 'title', 'extras', 'tag'])
+
+    if os.path.exists('dataset.csv'):
+        total_memory = os.path.getsize('dataset.csv')/(1024*1024)
+    else:
+        total_memory = 0
 
     with open(metadata_file) as f:
         try:
@@ -186,12 +191,17 @@ def download_decisions(
 
                     full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
                     full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
-                        
+                    full_df = full_df.drop(columns=['Partially Upheld'])
+
+                    # label encode decisions
+                    label_map = {'Upheld': 0, 'Not upheld': 1, 'Partially upheld': 2}
+                    full_df['decision'] = full_df['decision'].map(label_map)
+
                     full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
                     temp = df.memory_usage(deep=True)/(1024**2)
                     total_memory += temp.sum().round(2)
-                    print("Current memory usage: ", total_memory, " MB - ", c*count, " files")
+                    print("Current memory usage: ", total_memory.round(2), " MB - ", c*count, " files")
 
                     batch = []; count = 0; c+=1
                     for f in os.listdir(output_dir):
@@ -202,17 +212,31 @@ def download_decisions(
 
             full_df = pd.merge(metadata_df, df, on='decision_id', how='inner')
             full_df.loc[full_df['Partially Upheld'] == 'Yes', 'decision'] = 'Partially upheld'
+            full_df = full_df.drop(columns=['Partially Upheld'])
+
+            # label encode decisions
+            label_map = {'Upheld': 0, 'Not upheld': 1, 'Partially upheld': 2}
+            full_df['decision'] = full_df['decision'].map(label_map)
 
             full_df.to_csv('dataset.csv', mode='a+', index=False, header=False)
 
             temp = df.memory_usage(deep=True)/(1024**2)
             total_memory += temp.sum().round(2)
-            print("Final memory usage: ", total_memory, " MB")
+            print("Final memory usage: ", total_memory.round(2), " MB")
 
             for f in os.listdir(output_dir):
                 os.remove(os.path.join(output_dir, f))
-        except:
-            print("Error!")
-                    
+        except Exception as e:
+            print(e)
+
+@app.command()
+def validate():
+    df = pd.read_csv('dataset.csv', header=None)
+    df.columns = ['decision_id', 'Date', 'Company', 'Product', 'Decision', 'Tag', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided - and why', 'My final decision', 'Partially Upheld']
+    condition = df['decision_id'].str.contains('DRN-')
+    df = df[condition]
+    print(len(df))
+    print(len(df['decision_id'].unique()))
+
 if __name__ == "__main__":
     app()
