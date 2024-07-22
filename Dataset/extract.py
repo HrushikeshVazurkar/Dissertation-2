@@ -2,8 +2,6 @@ import PyPDF2
 import re
 import os
 import pandas as pd
-from pprint import pprint
-import unicodedata
 
 def preprocess_text_from_pdf(text):
     text_normalized = text.encode('ascii', 'ignore').decode() # Unicode normalization (NFD form)
@@ -42,7 +40,6 @@ def extract_text_between_headings(text, headings):
 
     hdi.append(len(lines)-2)
 
-    print(hdi)
     if hdi[2] != -1:
         complaint = ' '.join(lines[hdi[0] + 1: hdi[1]])
         what_happened = ' '.join(lines[hdi[1] + 1: hdi[2]])
