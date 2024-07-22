@@ -232,11 +232,26 @@ def download_decisions(
 @app.command()
 def validate():
     df = pd.read_csv('dataset.csv', header=None)
-    df.columns = ['decision_id', 'Date', 'Company', 'Product', 'Decision', 'Tag', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided - and why', 'My final decision', 'Partially Upheld']
-    condition = df['decision_id'].str.contains('DRN-')
-    df = df[condition]
+    df.columns = ['decision_id', 'Date', 'Company', 'Product', 'Decision', 'The complaint', 'What happened', 'Provisional decision', 'What Ive decided - and why', 'My final decision']
+    condition = df['decision_id'].str.contains('DRN')
+
+    df['Decision'] = pd.to_numeric(df['Decision'], errors='coerce')
+    valid_decisions = [0, 1, 2]    
+    condition2 = df['Decision'].isin(valid_decisions)
+
+    condition3 = ~df['My final decision'].isna()
+    condition4 = ~df['The complaint'].isna()
+    condition5 = ~df['What happened'].isna()
+    condition6 = ~df['What Ive decided - and why'].isna()
+    
+    df2 = df[condition & condition2 & condition3 & condition4 & condition5 & condition6]
+
     print(len(df))
-    print(len(df['decision_id'].unique()))
+    print(len(df2))
+
+    print(len(df2['decision_id'].unique()))
+
+    df2.to_csv('final_dataset.csv', index=False)
 
 if __name__ == "__main__":
     app()
